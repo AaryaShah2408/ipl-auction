@@ -7,6 +7,7 @@ const path = require('path');
 const { pool, initDB } = require('./db');
 const playerRoutes = require('./routes/players');
 const { router: adminRoutes } = require('./routes/admin');
+const imageRoutes = require('./routes/images');
 
 const app = express();
 const server = http.createServer(app);
@@ -26,6 +27,7 @@ app.use(session({
 // Routes
 app.use('/api/players', playerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/images', imageRoutes);
 
 // Serve HTML pages
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
@@ -36,7 +38,6 @@ app.get('/player/:id', (req, res) => res.sendFile(path.join(__dirname, 'public',
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  // Place a bid
   socket.on('place_bid', async (data) => {
     const { player_id, bidder_name, team_name, amount } = data;
 
@@ -46,7 +47,6 @@ io.on('connection', (socket) => {
     }
 
     try {
-      // Get current bid
       const { rows } = await pool.query('SELECT * FROM players WHERE id = $1', [player_id]);
       const player = rows[0];
 
@@ -65,19 +65,16 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // Update player bid
       const updated = await pool.query(
         `UPDATE players SET current_bid = $1, current_bidder = $2, team = $3 WHERE id = $4 RETURNING *`,
         [amount, bidder_name, team_name, player_id]
       );
 
-      // Record bid in history
       await pool.query(
         'INSERT INTO bids (player_id, bidder_name, team_name, amount) VALUES ($1, $2, $3, $4)',
         [player_id, bidder_name, team_name, amount]
       );
 
-      // Broadcast to ALL connected clients
       io.emit('bid_updated', {
         player_id,
         current_bid: amount,
