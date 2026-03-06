@@ -322,13 +322,3 @@ function showToast(msg, type = 'success') {
 
 checkSession();
 
-async function clearWikiImages() {
-  if (!confirm('This will clear all Wikipedia images so they get replaced with better ones. Continue?')) return;
-  const res = await fetch('/api/admin/clear-wiki-images', { method: 'POST' });
-  const data = await res.json();
-  if (data.success) {
-    showToast(`✅ Cleared ${data.cleared} Wikipedia images. Refresh the players page to see new photos!`);
-  } else {
-    showToast(data.error, 'error');
-  }
-}
